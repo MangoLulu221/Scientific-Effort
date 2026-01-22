@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.13)
+# 确保启用 C 和 C++ 编译器
+project(CustomCallGraphPass CXX C)
+
+# 关键修改：移除版本号 '18'，仅通过 PATHS 强制查找 LLVM 18 的配置
+find_package(LLVM REQUIRED 
+    CONFIG
+    PATHS /usr/lib/llvm-18/cmake
+    NO_CMAKE_FIND_ROOT_PATH
+    NO_DEFAULT_PATH
+)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+
+# 解决头文件找不到问题：必须显式添加 LLVM 的头文件目录
+include_directories(${LLVM_INCLUDE_DIRS})
+
+add_library(CGPass SHARED CGPass.cpp)
+
+# 最小化链接：只链接 Core 和 Passes，避免重复注册命令行选项。
+llvm_map_components_to_libraries(LLVM_LIBS Core Passes)
+
+target_link_libraries(CGPass
+  PRIVATE
+    ${LLVM_LIBS}
+)
+
+# 确保链接器知道在哪里找到 LLVM 库
+set_target_properties(CGPass PROPERTIES
+    INSTALL_RPATH "${LLVM_LIBRARY_DIRS}"
+    BUILD_RPATH "${LLVM_LIBRARY_DIRS}"
+)
